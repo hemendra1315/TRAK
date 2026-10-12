@@ -47,6 +47,9 @@ jobs:
       - name: Unit tests
         run: .github/scripts/gradle-annotate.sh test test --continue
 
+      - name: Lint
+        run: .github/scripts/gradle-annotate.sh lint lint
+
       - name: Room schema check
         if: always()
         run: |
@@ -105,3 +108,78 @@ jobs:
             **/build/reports/tests/
             **/build/test-results/
           if-no-files-found: ignore
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: No service-role key references in app code
+        run: |
+          if grep -rniE "service_role|SERVICE_ROLE_KEY|sb_secret_" app core --include=*.kt --include=*.kts --include=*.xml; then
+            echo "::error title=Secret reference::A service-role/secret key reference was found in app code (test A16)."
+            exit 1
+          fi
+          echo "::notice title=A16::No service-role or secret key references in app or core modules."
+
+  database:
+    name: Database (local Supabase) and auth E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: |
+          supabase --version | sed 's/^/::notice title=Supabase CLI::/'
+          supabase start -x studio,imgproxy,realtime,storage-api,edge-runtime,logflare,vector 2>&1 | tee supabase-start.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            msg=$(tail -c 6000 supabase-start.log | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
+            echo "::error title=supabase start failed::${msg}"
+            exit "$status"
+          fi
+
+      - name: Reset database from migrations
+        run: |
+          supabase db reset 2>&1 | tee db-reset.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            msg=$(tail -c 6000 db-reset.log | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
+            echo "::error title=db reset failed::${msg}"
+          fi
+          exit "$status"
+
+      - name: pgTAP RLS tests (A11)
+        run: |
+          supabase test db 2>&1 | tee pgtap.log
+          status=${PIPESTATUS[0]}
+          summary=$(grep -E "^(ok|not ok|Files=|Result:|#)" pgtap.log | head -60 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
+          if [ "$status" -ne 0 ]; then
+            echo "::error title=pgTAP failed::${summary}"
+          else
+            echo "::notice title=pgTAP::${summary}"
+          fi
+          exit "$status"
+
+      - name: Email OTP and RLS end-to-end (A22)
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL
+          export ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
+          export MAIL_URL="${MAILPIT_URL:-${INBUCKET_URL:-http://127.0.0.1:54324}}"
+          python3 scripts/e2e_auth_rls.py 2>&1 | tee e2e.log
+          status=${PIPESTATUS[0]}
+          lines=$(sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g' e2e.log)
+          if [ "$status" -ne 0 ]; then echo "::error title=E2E failed::${lines}"; else echo "::notice title=E2E::${lines}"; fi
+          exit "$status"

@@ -1,0 +1,39 @@
+# Supabase local development configuration for TRAK.
+# Used by `supabase start` locally and in CI. No hosted project is linked (decision E3).
+
+project_id = "trak"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+
+[db]
+port = 54322
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+# Email OTP (6-digit code) is the only sign-in method in Phase 1 (decision D1).
+enable_signup = true
+
+[auth.rate_limit]
+# Local/CI only: allows the end-to-end test to send codes to several test users.
+email_sent = 100
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+otp_length = 6
+otp_expiry = 600
+
+# Supabase's default templates send a magic link; TRAK shows the code ({{ .Token }}).
+# The hosted project must use the same templates (plan section 6, "Email OTP setup").
+[auth.email.template.magic_link]
+subject = "Your TRAK sign-in code"
+content_path = "./supabase/templates/otp_code.html"
+
+[auth.email.template.confirmation]
+subject = "Your TRAK sign-in code"
+content_path = "./supabase/templates/otp_code.html"
