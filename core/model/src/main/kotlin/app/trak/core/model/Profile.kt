@@ -4,7 +4,7 @@ import java.time.DayOfWeek
 import java.time.Instant
 import java.time.ZoneId
 
-/** Codes match the server check constraints in supabase/migrations/*_profiles.sql. */
+/** Codes match the server check constraints in the supabase profiles migration. */
 enum class PrimaryRole(val code: String) {
     BATTER("batter"),
     BOWLER("bowler"),

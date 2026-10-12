@@ -4,70 +4,69 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.Shapes
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.unit.dp
 
 /** Theme modes offered in Settings. Ground Mode is the high-contrast light theme for outdoor use. */
 enum class ThemeMode { DARK, GROUND, SYSTEM }
 
-/**
- * Colour tokens. Neutral near-black surfaces with one teal accent (decision D2).
- * Contrast ratios are documented in the Phase 1 plan and asserted by ContrastTest (step 4).
- */
-object TrakColors {
-    object Dark {
-        val background = Color(0xFF0A0A0A)
-        val surface = Color(0xFF111111)
-        val surfaceRaised = Color(0xFF161616)
-        val textPrimary = Color(0xFFF5F5F5)
-        val textSecondary = Color(0xFFA3A3A3)
-        val accent = Color(0xFF2DD4BF)
-        val onAccent = Color(0xFF0A0A0A)
-        val error = Color(0xFFF87171)
-    }
+val LocalTrakColors = staticCompositionLocalOf { TrakColors.Dark }
 
-    object Ground {
-        val background = Color(0xFFFFFFFF)
-        val surface = Color(0xFFF2F2F2)
-        val surfaceRaised = Color(0xFFE8E8E8)
-        val textPrimary = Color(0xFF000000)
-        val textSecondary = Color(0xFF3D3D3D)
-        val accent = Color(0xFF0F766E)
-        val onAccent = Color(0xFFFFFFFF)
-        val error = Color(0xFFB91C1C)
-    }
+private fun TrakColorTokens.toMaterial() = if (isDark) {
+    darkColorScheme(
+        primary = accent, onPrimary = onAccent,
+        secondary = textSecondary, onSecondary = background,
+        background = background, onBackground = textPrimary,
+        surface = surface, onSurface = textPrimary,
+        surfaceVariant = surfaceRaised, onSurfaceVariant = textSecondary,
+        surfaceContainer = surface, surfaceContainerHigh = surfaceRaised, surfaceContainerHighest = surfaceRaised,
+        surfaceContainerLow = surface, surfaceContainerLowest = background,
+        outline = border, outlineVariant = divider,
+        error = error, onError = background,
+    )
+} else {
+    lightColorScheme(
+        primary = accent, onPrimary = onAccent,
+        secondary = textSecondary, onSecondary = background,
+        background = background, onBackground = textPrimary,
+        surface = surface, onSurface = textPrimary,
+        surfaceVariant = surfaceRaised, onSurfaceVariant = textSecondary,
+        surfaceContainer = surface, surfaceContainerHigh = surfaceRaised, surfaceContainerHighest = surfaceRaised,
+        surfaceContainerLow = surface, surfaceContainerLowest = background,
+        outline = border, outlineVariant = divider,
+        error = error, onError = background,
+    )
 }
 
-private val DarkScheme = darkColorScheme(
-    primary = TrakColors.Dark.accent,
-    onPrimary = TrakColors.Dark.onAccent,
-    background = TrakColors.Dark.background,
-    onBackground = TrakColors.Dark.textPrimary,
-    surface = TrakColors.Dark.surface,
-    onSurface = TrakColors.Dark.textPrimary,
-    surfaceVariant = TrakColors.Dark.surfaceRaised,
-    onSurfaceVariant = TrakColors.Dark.textSecondary,
-    error = TrakColors.Dark.error,
-)
-
-private val GroundScheme = lightColorScheme(
-    primary = TrakColors.Ground.accent,
-    onPrimary = TrakColors.Ground.onAccent,
-    background = TrakColors.Ground.background,
-    onBackground = TrakColors.Ground.textPrimary,
-    surface = TrakColors.Ground.surface,
-    onSurface = TrakColors.Ground.textPrimary,
-    surfaceVariant = TrakColors.Ground.surfaceRaised,
-    onSurfaceVariant = TrakColors.Ground.textSecondary,
-    error = TrakColors.Ground.error,
+private val TrakShapes = Shapes(
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp),
 )
 
 @Composable
 fun TrakTheme(mode: ThemeMode = ThemeMode.DARK, content: @Composable () -> Unit) {
-    val useDark = when (mode) {
-        ThemeMode.DARK -> true
-        ThemeMode.GROUND -> false
-        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    val tokens = when (mode) {
+        ThemeMode.DARK -> TrakColors.Dark
+        ThemeMode.GROUND -> TrakColors.Ground
+        ThemeMode.SYSTEM -> if (isSystemInDarkTheme()) TrakColors.Dark else TrakColors.Ground
     }
-    MaterialTheme(colorScheme = if (useDark) DarkScheme else GroundScheme, content = content)
+    CompositionLocalProvider(LocalTrakColors provides tokens) {
+        MaterialTheme(
+            colorScheme = tokens.toMaterial(),
+            typography = TrakTypography,
+            shapes = TrakShapes,
+            content = content,
+        )
+    }
+}
+
+/** Access TRAK tokens that Material's scheme doesn't carry (tertiary text, warning). */
+object Trak {
+    val colors: TrakColorTokens
+        @Composable get() = LocalTrakColors.current
 }
