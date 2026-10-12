@@ -25,6 +25,7 @@ class SupabaseProviderTest {
             publishableKey = "sb_publishable_spikeTestKeyNotReal0000",
             sessionManager = MemorySessionManager(),
             autoRefresh = false,
+            lifecycleCallbacks = false,
         )
         assertNotNull(client.auth)
         assertNotNull(client.postgrest)

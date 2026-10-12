@@ -26,12 +26,15 @@ fun createTrakSupabaseClient(
     sessionManager: SessionManager,
     codeVerifierCache: CodeVerifierCache = MemoryCodeVerifierCache(),
     autoRefresh: Boolean = true,
+    /** Android focus/lifecycle hooks for auto-refresh. Disabled in plain JVM tests (no main looper). */
+    lifecycleCallbacks: Boolean = true,
 ): SupabaseClient = createSupabaseClient(supabaseUrl = url, supabaseKey = publishableKey) {
     install(Auth) {
         this.sessionManager = sessionManager
         this.codeVerifierCache = codeVerifierCache
         autoLoadFromStorage = true
         alwaysAutoRefresh = autoRefresh
+        enableLifecycleCallbacks = lifecycleCallbacks
     }
     install(Postgrest)
 }
@@ -45,7 +48,15 @@ data class SupabaseConfig(val url: String, val publishableKey: String) {
  * Holds the single client. [client] is null when the build has no Supabase settings, so the app
  * still runs (local features work; sign-in reports "not configured") instead of crashing.
  */
-class SupabaseClientHolder(config: SupabaseConfig, sessionManager: SessionManager) {
+class SupabaseClientHolder(
+    config: SupabaseConfig,
+    sessionManager: SessionManager,
+    lifecycleCallbacks: Boolean = true,
+) {
     val client: SupabaseClient? =
-        if (config.isConfigured) createTrakSupabaseClient(config.url, config.publishableKey, sessionManager) else null
+        if (config.isConfigured) {
+            createTrakSupabaseClient(config.url, config.publishableKey, sessionManager, lifecycleCallbacks = lifecycleCallbacks)
+        } else {
+            null
+        }
 }

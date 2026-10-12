@@ -58,7 +58,7 @@ class SupabaseIntegrationTest {
     fun `email code sign-in, profile upsert, stale guard and RLS through the app's own code`() = runBlocking {
         assumeTrue("Integration env not set; skipped outside the CI database job", apiUrl != null && key != null && mailUrl != null)
 
-        val holder = SupabaseClientHolder(SupabaseConfig(apiUrl!!, key!!), MemorySessionManager())
+        val holder = SupabaseClientHolder(SupabaseConfig(apiUrl!!, key!!), MemorySessionManager(), lifecycleCallbacks = false)
         val auth = SupabaseAuthGateway(holder, MemorySessionManager())
         val remote = SupabaseProfileRemote(holder)
         val email = "it-${UUID.randomUUID().toString().take(8)}@trak.test"
