@@ -3,6 +3,11 @@
 # See docs/decisions/0001-toolchain-and-versions.md for sources and CI evidence.
 
 [versions]
+# SDK levels. compileSdk 37 is required by Compose 1.12.x AAR metadata (CI evidence, ADR 0001);
+# targetSdk stays 36 (Play requirement since 2026-08-31); minSdk 26 per supabase-kt.
+compileSdk = "37"
+targetSdk = "36"
+minSdk = "26"
 agp = "9.4.0"
 kotlin = "2.4.21"                 # KGP version for AGP built-in Kotlin, Compose + serialization plugins
 ksp = "2.3.11"

@@ -18,10 +18,10 @@ fun clientConfig(name: String): String =
 
 android {
     namespace = "app.trak.core.data"
-    compileSdk = 36
+    compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        minSdk = 26
+        minSdk = libs.versions.minSdk.get().toInt()
         buildConfigField("String", "SUPABASE_URL", "\"${clientConfig("SUPABASE_URL")}\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${clientConfig("SUPABASE_PUBLISHABLE_KEY")}\"")
     }
