@@ -71,23 +71,7 @@ jobs:
 
       - name: Test summary
         if: always()
-        run: |
-          python3 - <<'EOF'
-          import glob, xml.etree.ElementTree as ET
-          t=f=e=s=0; failed=[]
-          for p in glob.glob("**/build/test-results/**/*.xml", recursive=True):
-              r=ET.parse(p).getroot()
-              suites=[r] if r.tag=="testsuite" else r.findall("testsuite")
-              for su in suites:
-                  t+=int(su.get("tests",0)); f+=int(su.get("failures",0)); e+=int(su.get("errors",0)); s+=int(su.get("skipped",0))
-                  for c in su.findall("testcase"):
-                      bad=c.find("failure") if c.find("failure") is not None else c.find("error")
-                      if bad is not None:
-                          failed.append(f"{c.get('classname')}.{c.get('name')}: {(bad.get('message') or '')[:300]}")
-          print(f"::notice title=Unit tests::tests={t} failures={f} errors={e} skipped={s}")
-          for x in failed[:10]:
-              print("::error title=Test failed::" + x.replace("%","%25").replace("\n","%0A"))
-          EOF
+        run: python3 .github/scripts/test-summary.py "Unit tests" "**/build/test-results/test*/**/*.xml"
 
       - name: Resolved runtime versions
         if: always()
@@ -183,3 +167,56 @@ jobs:
           lines=$(sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g' e2e.log)
           if [ "$status" -ne 0 ]; then echo "::error title=E2E failed::${lines}"; else echo "::notice title=E2E::${lines}"; fi
           exit "$status"
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Kotlin client integration test against local stack
+        run: |
+          chmod +x .github/scripts/gradle-annotate.sh
+          eval "$(supabase status -o env)"
+          export TRAK_IT_API_URL="$API_URL"
+          export TRAK_IT_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
+          export TRAK_IT_MAIL_URL="${MAILPIT_URL:-${INBUCKET_URL:-http://127.0.0.1:54324}}"
+          .github/scripts/gradle-annotate.sh integration :core:data:testDebugUnitTest --tests "*SupabaseIntegrationTest*"
+
+      - name: Integration test summary
+        if: always()
+        run: python3 .github/scripts/test-summary.py "Integration tests" "core/data/build/test-results/testDebugUnitTest/*Integration*.xml"
+
+  instrumented:
+    name: Instrumented tests (emulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run instrumented tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: chmod +x .github/scripts/gradle-annotate.sh && .github/scripts/gradle-annotate.sh connected connectedDebugAndroidTest
+
+      - name: Instrumented test summary
+        if: always()
+        run: python3 .github/scripts/test-summary.py "Instrumented tests" "**/build/outputs/androidTest-results/connected/**/*.xml"

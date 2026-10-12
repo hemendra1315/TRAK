@@ -2,8 +2,8 @@ package app.trak.core.data.remote
 
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
-import io.github.jan.supabase.auth.MemoryCodeVerifierCache
 import io.github.jan.supabase.auth.CodeVerifierCache
+import io.github.jan.supabase.auth.MemoryCodeVerifierCache
 import io.github.jan.supabase.auth.SessionManager
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
@@ -34,4 +34,18 @@ fun createTrakSupabaseClient(
         alwaysAutoRefresh = autoRefresh
     }
     install(Postgrest)
+}
+
+/** Build-time client settings (from local.properties or CI environment). */
+data class SupabaseConfig(val url: String, val publishableKey: String) {
+    val isConfigured: Boolean get() = url.isNotBlank() && publishableKey.isNotBlank()
+}
+
+/**
+ * Holds the single client. [client] is null when the build has no Supabase settings, so the app
+ * still runs (local features work; sign-in reports "not configured") instead of crashing.
+ */
+class SupabaseClientHolder(config: SupabaseConfig, sessionManager: SessionManager) {
+    val client: SupabaseClient? =
+        if (config.isConfigured) createTrakSupabaseClient(config.url, config.publishableKey, sessionManager) else null
 }
