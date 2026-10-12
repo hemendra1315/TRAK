@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Build and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/wrapper-validation@v4
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Toolchain report
+        run: |
+          ./gradlew --version
+          ./gradlew buildEnvironment --no-configuration-cache > build-environment.txt
+          echo "### Build classpath (Kotlin, AGP, KSP, Hilt, Room)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -E "kotlin-gradle-plugin|com.android.tools.build:gradle:|symbol-processing-gradle-plugin|hilt-android-gradle-plugin|androidx.room:room-gradle-plugin" build-environment.txt | sort -u | head -40 >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Assemble debug
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Unit tests
+        run: ./gradlew test --stacktrace --continue
+
+      - name: Resolved runtime versions
+        if: always()
+        run: |
+          ./gradlew :app:dependencies --configuration debugRuntimeClasspath > app-runtime-deps.txt || true
+          echo "### Resolved runtime versions (:app debugRuntimeClasspath)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -oE "(org.jetbrains.kotlin:kotlin-stdlib|androidx.compose.ui:ui|androidx.compose.material3:material3|androidx.room:room-runtime|com.google.dagger:hilt-android|io.github.jan-tennert.supabase:auth-kt|io.ktor:ktor-client-core|org.jetbrains.kotlinx:kotlinx-serialization-json|org.jetbrains.kotlinx:kotlinx-coroutines-core):[^ ]+( -> [^ ]+)?" app-runtime-deps.txt | sort -u >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            build-environment.txt
+            app-runtime-deps.txt
+            **/build/reports/tests/
+            **/build/test-results/
+          if-no-files-found: ignore

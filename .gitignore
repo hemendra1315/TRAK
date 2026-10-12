@@ -1,0 +1,19 @@
+# Gradle / build
+.gradle/
+build/
+.kotlin/
+captures/
+# IDE
+.idea/
+*.iml
+.DS_Store
+# Local config and secrets — never commit
+local.properties
+.env
+.env.*
+*.keystore
+*.jks
+google-services.json
+# Supabase local state
+supabase/.branches/
+supabase/.temp/
