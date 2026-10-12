@@ -2,13 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- allowBackup=false for the spike; Phase 1 step 9 replaces this with explicit
-         dataExtractionRules excluding database, DataStore and session storage (review fix B4). -->
+    <!-- Backup: nothing is copied to cloud backup or device transfer (review fix B4, test A21). -->
     <application
         android:name=".TrakApplication"
         android:allowBackup="false"
-        android:label="TRAK"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar">
         <activity
