@@ -53,8 +53,13 @@ jobs:
           f=$(find core/data/schemas -name '*.json' 2>/dev/null | sort)
           if [ -z "$f" ]; then echo "::error title=Room schema::No exported schema found under core/data/schemas"; exit 1; fi
           for x in $f; do
-            enc=$(python3 -c "import base64,sys;print(base64.b64encode(open(sys.argv[1],'rb').read()).decode())" "$x")
-            echo "::notice title=Room schema ${x}::${enc}"
+            # Annotation messages are truncated around 4 KB, so emit base64 in numbered chunks.
+            python3 -c "
+          import base64,sys
+          d=base64.b64encode(open(sys.argv[1],'rb').read()).decode()
+          parts=[d[i:i+3000] for i in range(0,len(d),3000)]
+          for n,p in enumerate(parts): print(f'::notice title=Room schema {sys.argv[1]} part {n+1}/{len(parts)}::{p}')
+          " "$x"
           done
           if [ -n "$(git status --porcelain core/data/schemas)" ]; then
             echo "::error title=Room schema not committed::Exported schema differs from the committed copy. Commit core/data/schemas."
