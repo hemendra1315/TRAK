@@ -56,17 +56,41 @@ forward-compatible.
 | E8 | Try Kotlin 2.4.21 first; fall back to 2.3.21 only on a recorded failure. |
 | S1 | Sign-out never silently discards unsynced data. |
 
-## Build spike evidence
+## Build spike evidence (GitHub Actions, 2026-10-12)
 
-_Filled in from the CI run of the spike commit. Nothing below is assumed._
+Only results read from CI check-run annotations are recorded here. Run IDs refer to
+`hemendra1315/TRAK` Actions runs.
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| `assembleDebug` | pending | |
-| `test` (`:core:model`, `:core:data`) | pending | |
-| KGP version used by AGP built-in Kotlin | pending | |
-| Compose versions resolved by BOM 2026.09.00 | pending | |
-| Hilt + KSP code generation | pending | |
-| Room schema export (v1) | pending | |
-| supabase-kt client construction on JVM | pending | |
-| Kotlin fallback used? | pending | |
+| `assembleDebug` with AGP 9.4.0, Gradle 9.6.0, JDK 17.0.20.1 | **Pass** (after compileSdk 37, below) | runs 38280291948 and later |
+| Unit tests (`:core:model`, `:core:data`) | **Pass: 6 tests, 0 failures** | run 38280291948 |
+| KGP used by AGP built-in Kotlin | **2.4.21** (AGP requests 2.2.10, resolved up to 2.4.21 from the root plugin declarations) | `buildEnvironment` annotation |
+| KSP | 2.3.11 (AGP's 2.2.10-2.0.2 request resolved to 2.3.11) | same |
+| Hilt + KSP code generation | **Pass** (`@HiltAndroidApp`, `@AndroidEntryPoint` compile) | `assembleDebug` |
+| Compose BOM 2026.09.00 resolution | compose-ui **1.12.1**, material3 **1.4.0** | runtime classpath annotation |
+| Room 2.8.5 + KSP, schema export v1 | **Pass**; `core/data/schemas/app.trak.core.data.db.TrakDatabase/1.json`, identityHash `04b023f195aa03c92d7bac0e97653fc7` | schema annotation, CI committed-schema check |
+| supabase-kt 3.8.0 + Ktor 3.5.1 client construction (JVM) | **Pass** with TRAK-supplied `SessionManager` and `CodeVerifierCache` | `SupabaseProviderTest` |
+| Other resolved runtime versions | kotlin-stdlib 2.4.21, coroutines 1.11.0, serialization-json 1.11.0, room-runtime 2.8.5, hilt-android 2.60.1, auth-kt 3.8.0, ktor-client-core 3.5.1 | runtime classpath annotation |
+| Kotlin 2.3.21 fallback (E8) | **Not used.** No Kotlin compatibility failure occurred. | |
+
+### Failures found and how they were resolved
+
+1. **compileSdk 36 rejected** (`:core:designsystem:checkDebugAarMetadata`): Compose 1.12.1 artifacts
+   (`androidx.compose.ui:ui-android:1.12.1` and 10 others) require compileSdk >= 37.
+   **Resolution:** compileSdk 37 (supported by AGP 9.4, max API 37); targetSdk stays 36; minSdk 26.
+2. **supabase-kt default storage fails off-device:** "Failed to create default settings for
+   SettingsSessionManager". In 3.8.0, `AuthConfig.sessionManager` and `codeVerifierCache` are
+   nullable and fall back to Settings-based defaults.
+   **Resolution:** TRAK always supplies both. This confirms review fix B4: session storage is TRAK-owned
+   (Phase 1 step 7 adds the app-private, backup-excluded implementation).
+3. **SessionManager contract:** `loadSession(): UserSession` is non-null and must throw
+   `NoSessionFoundException` when empty (`loadSessionOrNull()` is provided by default).
+   TRAK's implementation must follow this.
+
+### Notes
+
+- `gradle --version` reports "Kotlin: 2.3.21". That is Gradle's embedded Kotlin for build scripts,
+  not the project compiler (KGP 2.4.21 above).
+- Actions annotations flagged deprecated Node 20 actions and that `ubuntu-latest` moves to Ubuntu 26
+  from 2026-10-19; `checkout` and `setup-java` are already on v5.
