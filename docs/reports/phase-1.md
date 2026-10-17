@@ -134,8 +134,8 @@ Known limitation, by design until Phase 2: a 401 while online stays PENDING unti
 - Real-device checks A–E: BLOCKED (section 5).
 - `KeyboardUiTest` only proves keyboard layout on the CI emulator (API 35). Other OEM keyboards are
   covered by check E.
-- The CI database job depends on downloading the Supabase CLI. One run failed on a GitHub API rate
-  limit before running any test and was re-run. Consider pinning the CLI version in `ci.yml`.
+- The CI database job failed twice on a GitHub API rate limit while resolving the "latest" Supabase
+  CLI, before running any test. Fixed by pinning the CLI to 2.121.0 in `ci.yml`.
 
 ## 8. Owner actions
 
