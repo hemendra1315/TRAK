@@ -14,6 +14,8 @@ import app.trak.core.data.auth.DataStoreSessionManager
 import app.trak.core.data.auth.SupabaseAuthGateway
 import app.trak.core.data.db.TrakDatabase
 import app.trak.core.data.db.dao.ProfileDao
+import app.trak.core.data.network.ConnectivityNetworkMonitor
+import app.trak.core.data.network.NetworkMonitor
 import app.trak.core.data.profile.ProfileRemote
 import app.trak.core.data.profile.SupabaseProfileRemote
 import app.trak.core.data.remote.SupabaseClientHolder
@@ -91,4 +93,5 @@ abstract class DataBindsModule {
     @Binds abstract fun authGateway(impl: SupabaseAuthGateway): AuthGateway
     @Binds abstract fun profileRemote(impl: SupabaseProfileRemote): ProfileRemote
     @Binds abstract fun accountStore(impl: RoomAccountStore): AccountStore
+    @Binds abstract fun networkMonitor(impl: ConnectivityNetworkMonitor): NetworkMonitor
 }

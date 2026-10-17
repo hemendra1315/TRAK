@@ -141,6 +141,7 @@ fun EditProfileScreen(vm: ProfileViewModel, onDone: () -> Unit) {
 fun SettingsScreen(vm: ProfileViewModel) {
     val local by vm.profile.collectAsStateWithLifecycle()
     val theme by vm.theme.collectAsStateWithLifecycle()
+    val notice by vm.syncNotice.collectAsStateWithLifecycle()
     val p = local ?: return LoadingView()
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
@@ -170,5 +171,9 @@ fun SettingsScreen(vm: ProfileViewModel) {
         SyncStatusLine(p)
         TrakButton(stringResource(R.string.sync_now), onClick = vm::syncNow, style = TrakButtonStyle.SECONDARY,
             enabled = p.syncState != SyncState.SYNCED)
+        if (notice == SyncNotice.NOT_REACHED && p.syncState != SyncState.SYNCED) {
+            Text(stringResource(R.string.sync_not_reached), style = MaterialTheme.typography.bodyMedium,
+                color = Trak.colors.textSecondary, modifier = Modifier.testTag("sync_notice"))
+        }
     }
 }

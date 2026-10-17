@@ -16,6 +16,10 @@ import androidx.compose.ui.text.input.KeyboardType
 /**
  * Text field with a visible label and inline error. [errorText] non-null shows the error under the
  * field and announces it to TalkBack. [imeAction] Next/Done drives keyboard-friendly entry.
+ *
+ * When [onImeAction] is null the keyboard key does the platform default: Next moves focus to the
+ * next field without closing the keyboard, Done closes the keyboard. Pass a handler only when the key
+ * should do something else (send a code, verify, leave the field).
  */
 @Composable
 fun TrakTextField(
@@ -27,7 +31,7 @@ fun TrakTextField(
     supportingText: String? = null,
     keyboardType: KeyboardType = KeyboardType.Text,
     imeAction: ImeAction = ImeAction.Next,
-    onImeAction: () -> Unit = {},
+    onImeAction: (() -> Unit)? = null,
     singleLine: Boolean = true,
     enabled: Boolean = true,
 ) {
@@ -40,7 +44,9 @@ fun TrakTextField(
             { Text(msg, style = MaterialTheme.typography.bodyMedium) }
         },
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
-        keyboardActions = KeyboardActions(onAny = { onImeAction() }),
+        keyboardActions = KeyboardActions(onAny = {
+            if (onImeAction != null) onImeAction() else defaultKeyboardAction(imeAction)
+        }),
         singleLine = singleLine,
         enabled = enabled,
         modifier = modifier

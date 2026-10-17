@@ -15,6 +15,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -87,6 +89,15 @@ class ProfileRepository @Inject constructor(
     /** Fire-and-forget sync on the application scope, so it outlives the screen that saved. */
     fun requestSync(userId: UserId, includeFailed: Boolean = false) {
         appScope.launch { sync(userId, includeFailed) }
+    }
+
+    /**
+     * Retries a PENDING profile each time the phone comes (back) online, until cancelled. Nothing is
+     * attempted while offline. FAILED rows are not retried here: the server refused them, so retrying
+     * unchanged data can't help; the player sees the reason and can edit or tap Sync now.
+     */
+    suspend fun syncWhenOnline(userId: UserId, online: Flow<Boolean>) {
+        online.distinctUntilChanged().filter { it }.collect { sync(userId) }
     }
 
     suspend fun sync(userId: UserId, includeFailed: Boolean = false): SyncOutcome {

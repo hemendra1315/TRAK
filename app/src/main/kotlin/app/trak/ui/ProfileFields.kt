@@ -7,6 +7,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.res.stringResource
 import app.trak.R
 import app.trak.core.designsystem.component.ChipOption
@@ -31,11 +34,18 @@ fun NameAndRoleFields(
     val nameError = errors.firstOrNull { it.field == ProfileRules.FIELD_DISPLAY_NAME }?.code?.let {
         if (it == ErrorCode.TOO_LONG) stringResource(R.string.error_name_too_long) else stringResource(R.string.error_name_required)
     }
+    // Name is the only text input on the form; the rest are chips and a checkbox. Done is the honest key:
+    // it closes the keyboard and clears focus so the role chips, the 18+ row and the Save/Continue bar are
+    // in view. It does not submit, because role and the 18+ confirmation may still be missing.
+    val focusManager = LocalFocusManager.current
     TrakTextField(
         value = name,
         onValueChange = onNameChange,
         label = stringResource(R.string.display_name_label),
         errorText = nameError,
+        imeAction = ImeAction.Done,
+        onImeAction = { focusManager.clearFocus() },
+        modifier = Modifier.testTag("name_field"),
     )
     Spacer(Modifier.height(Spacing.s))
     SectionLabel(stringResource(R.string.primary_role_label))

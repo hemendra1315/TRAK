@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.trak.core.data.profile.LocalProfile
 import app.trak.core.data.profile.ProfileRepository
+import app.trak.core.data.network.NetworkMonitor
 import app.trak.core.data.profile.SaveResult
+import app.trak.core.data.profile.SyncOutcome
 import app.trak.core.data.session.SessionCoordinator
 import app.trak.core.data.session.SignOutCheck
 import app.trak.core.data.settings.UserSettings
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -38,15 +41,39 @@ sealed interface SignOutUi {
     data class ConfirmDelete(val typed: String = "", val wrong: Boolean = false) : SignOutUi
 }
 
+/** Result of tapping Sync now that the status line alone can't show. */
+enum class SyncNotice {
+    /** The attempt didn't reach the server (offline or session not usable). Data is still on the phone. */
+    NOT_REACHED,
+}
+
+/**
+ * Sync now must never look like it worked when it didn't. Synced and refused outcomes are already
+ * shown by the status line (SYNCED, or FAILED with the server's reason); only "still pending after
+ * an attempt" needs an extra message, otherwise the tap would appear to do nothing.
+ */
+fun syncNoticeFor(outcome: SyncOutcome): SyncNotice? = when (outcome) {
+    SyncOutcome.StillPending -> SyncNotice.NOT_REACHED
+    SyncOutcome.Synced, SyncOutcome.AdoptedServerCopy, SyncOutcome.NothingToSync, is SyncOutcome.Failed -> null
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val profiles: ProfileRepository,
     private val coordinator: SessionCoordinator,
     private val settings: UserSettings,
+    network: NetworkMonitor,
 ) : ViewModel() {
 
     private val userId = MutableStateFlow<UserId?>(null)
+
+    init {
+        // Retry a pending profile automatically whenever the phone comes back online (test B).
+        viewModelScope.launch {
+            userId.filterNotNull().collectLatest { id -> profiles.syncWhenOnline(id, network.isOnline) }
+        }
+    }
 
     val profile: StateFlow<LocalProfile?> = userId.filterNotNull()
         .flatMapLatest { profiles.observe(it) }
@@ -56,6 +83,9 @@ class ProfileViewModel @Inject constructor(
 
     private val _editErrors = MutableStateFlow<List<ValidationError>>(emptyList())
     val editErrors: StateFlow<List<ValidationError>> = _editErrors.asStateFlow()
+
+    private val _syncNotice = MutableStateFlow<SyncNotice?>(null)
+    val syncNotice: StateFlow<SyncNotice?> = _syncNotice.asStateFlow()
 
     private val _signOut = MutableStateFlow<SignOutUi>(SignOutUi.None)
     val signOut: StateFlow<SignOutUi> = _signOut.asStateFlow()
@@ -77,7 +107,10 @@ class ProfileViewModel @Inject constructor(
 
     fun syncNow() {
         val id = userId.value ?: return
-        profiles.requestSync(id, includeFailed = true)
+        viewModelScope.launch {
+            _syncNotice.value = null
+            _syncNotice.value = syncNoticeFor(profiles.sync(id, includeFailed = true))
+        }
     }
 
     private fun update(onSaved: () -> Unit = {}, change: (ProfileInput) -> ProfileInput) {
