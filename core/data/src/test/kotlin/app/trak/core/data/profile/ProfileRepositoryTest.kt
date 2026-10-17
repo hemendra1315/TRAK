@@ -9,7 +9,10 @@ import app.trak.core.model.UserId
 import java.time.Instant
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -150,5 +153,65 @@ class ProfileRepositoryTest {
         remote.fetchResult = RemoteResult.Network
         assertEquals(RestoreResult.Offline, repo.restoreFromServer(user))
         assertTrue(dao.rows.value.isEmpty())
+    }
+
+    // --- Phase 1 close-out: automatic retry when connectivity returns (manual check B) ---
+
+    @Test
+    fun `A8b a pending edit syncs by itself when the phone comes back online, exactly once`() = runTest {
+        repo.save(user, input("Arjun"))
+        val online = MutableStateFlow(false)
+        val job = launch { repo.syncWhenOnline(user, online) }
+        runCurrent()
+        assertEquals("nothing is attempted while offline", 0, remote.upserts.size)
+        assertEquals("PENDING", row().syncState)
+
+        online.value = true
+        runCurrent()
+        assertEquals("SYNCED", row().syncState)
+        assertEquals(1, remote.upserts.size)
+        assertEquals(1L, remote.server?.version)
+
+        // Flapping connectivity after the sync must not push again or create another server version.
+        online.value = false
+        runCurrent()
+        online.value = true
+        runCurrent()
+        assertEquals(1, remote.upserts.size)
+        assertEquals(1L, remote.server?.version)
+        job.cancel()
+    }
+
+    @Test
+    fun `A8c a reconnect attempt that still can't reach the server keeps the edit pending for the next one`() = runTest {
+        repo.save(user, input("Arjun"))
+        val online = MutableStateFlow(false)
+        val job = launch { repo.syncWhenOnline(user, online) }
+        remote.nextUpsertResult = RemoteResult.Network // e.g. captive portal: "online" but unreachable
+        online.value = true
+        runCurrent()
+        assertEquals("PENDING", row().syncState)
+        assertEquals("Arjun", row().displayName)
+
+        online.value = false
+        runCurrent()
+        online.value = true
+        runCurrent()
+        assertEquals("SYNCED", row().syncState)
+        assertEquals(2, remote.upserts.size)
+        job.cancel()
+    }
+
+    @Test
+    fun `A8d a profile the server refused is not retried automatically on reconnect`() = runTest {
+        remote.nextUpsertResult = RemoteResult.Rejected("violates check constraint")
+        repo.save(user, input("Arjun"))
+        assertTrue(repo.sync(user) is SyncOutcome.Failed)
+        val online = MutableStateFlow(true)
+        val job = launch { repo.syncWhenOnline(user, online) }
+        runCurrent()
+        assertEquals(1, remote.upserts.size)
+        assertEquals("FAILED", row().syncState)
+        job.cancel()
     }
 }

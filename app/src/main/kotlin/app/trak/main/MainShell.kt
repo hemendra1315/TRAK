@@ -1,5 +1,6 @@
 package app.trak.main
 
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -96,7 +97,14 @@ fun MainScaffold(
             }
         },
     ) { padding ->
-        NavHost(nav, startDestination = HomeRoute, modifier = Modifier.padding(padding)) {
+        // consumeWindowInsets: the shell has already reserved the status bar and the bottom navigation
+        // (which includes the gesture/button bar). Without this, a nested screen's SaveBar would add the
+        // navigation-bar inset a second time and float above the keyboard by the height of the tab bar.
+        NavHost(
+            nav,
+            startDestination = HomeRoute,
+            modifier = Modifier.padding(padding).consumeWindowInsets(padding),
+        ) {
             composable<HomeRoute> { HomeScreen(name = homeName) }
             composable<JournalRoute> { entry -> JournalScreen(initialDate = entry.toRoute<JournalRoute>().date) }
             composable<ProgressRoute> { ProgressScreen() }

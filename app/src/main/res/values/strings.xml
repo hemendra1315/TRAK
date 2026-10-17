@@ -95,6 +95,7 @@
     <string name="sync_status_pending">Saved on this phone. Will sync when online.</string>
     <string name="sync_status_failed">Saved on this phone, but the server refused it: %1$s</string>
     <string name="sync_now">Sync now</string>
+    <string name="sync_not_reached">Couldn\'t reach the server. Your changes are safe on this phone and will sync when you\'re back online.</string>
     <string name="saved">Saved</string>
 
     <!-- Settings -->

@@ -11,6 +11,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.trak.core.designsystem.theme.TrakTheme
@@ -45,13 +47,18 @@ class OnboardingUiTest {
         val cont = compose.onNodeWithText("Continue")
         cont.assertIsNotEnabled()
 
-        compose.onNode(hasSetTextAction()).performTextInput("Arjun")
+        // As a player would: type the name, then Done closes the keyboard (on a small screen the open
+        // keyboard leaves room only for the field and the Continue bar).
+        val name = compose.onNode(hasSetTextAction())
+        name.performClick()
+        name.performTextInput("Arjun")
+        name.performImeAction()
         cont.assertIsNotEnabled()
 
-        compose.onNodeWithText("Bowler").performClick()
+        compose.onNodeWithText("Bowler").performScrollTo().performClick()
         cont.assertIsNotEnabled()
 
-        compose.onNodeWithTag("adult_confirmation").performClick()
+        compose.onNodeWithTag("adult_confirmation").performScrollTo().performClick()
         cont.assertIsEnabled()
 
         cont.performClick()
@@ -69,9 +76,9 @@ class OnboardingUiTest {
                     { state = state.copy(adultConfirmed = it) }, {})
             }
         }
-        compose.onNodeWithText("Batter").performClick()
+        compose.onNodeWithText("Batter").performScrollTo().performClick()
         compose.onNodeWithText("Continue").assertIsEnabled()
-        compose.onNodeWithText("Batter").performClick()
+        compose.onNodeWithText("Batter").performScrollTo().performClick()
         compose.onNodeWithText("Continue").assertIsNotEnabled()
     }
 }
