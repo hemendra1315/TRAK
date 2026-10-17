@@ -46,6 +46,9 @@ need a phone and the project owner, so Phase 1 cannot be signed off yet.
 | `app/src/androidTest/.../OnboardingUiTest.kt` | Follows the real flow (type, Done, scroll to the chips). The old version tapped chips hidden behind the open keyboard on a small emulator |
 | `core/data/src/test/.../ProfileRepositoryTest.kt` | A8b–A8d reconnect tests |
 | `app/src/test/.../profile/SyncNoticeTest.kt` (new) | Sync now honesty mapping |
+| `app/src/debug/AndroidManifest.xml` (new) | Debug builds only: allow plain HTTP so a device can reach the local Supabase stack (`http://…:54321`). Without it, checks A–C fail with "Can't reach the server". Release stays HTTPS-only |
+| `app/src/test/.../CleartextPolicyTest.kt` (new) | Guards that cleartext never reaches the release build |
+| `.github/workflows/ci.yml` | Supabase CLI pinned to 2.121.0 (see section 7) |
 | `docs/reports/phase-1.md` | This report |
 
 No migrations, no schema changes, no Supabase changes, no new dependencies.
@@ -99,8 +102,10 @@ No physical device, second device, test inbox or outdoor session was available t
 is **BLOCKED**. The owner runs them and fills in "Actual".
 
 Backend for A–C: the **local** Supabase stack. Run `supabase start` (needs Docker), then put the API
-URL and publishable key printed by the CLI in `local.properties`, using your PC's LAN IP rather than
-127.0.0.1 so the phone can reach it. Read the code from Mailpit at http://localhost:54324. No hosted
+URL and publishable key printed by the CLI in `local.properties`. Use your PC's LAN IP rather than
+127.0.0.1 so the phone can reach it, or `http://10.0.2.2:54321` from an emulator. Use a **debug**
+build, because only debug allows plain HTTP. Phone and PC must be on the same Wi-Fi, and the PC
+firewall must allow port 54321. Read the code from Mailpit at http://localhost:54324. No hosted
 project is needed.
 
 | # | Steps | Expected | Actual | Status |

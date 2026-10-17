@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug builds only: allow plain HTTP so a phone or emulator can reach the LOCAL Supabase stack
+  (`supabase start` serves http://<your-PC-LAN-IP>:54321, or http://10.0.2.2:54321 from an emulator).
+  Release builds use src/main only and stay HTTPS-only (checked by CleartextPolicyTest).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application
+        android:usesCleartextTraffic="true"
+        tools:ignore="UnusedAttribute" />
+</manifest>
