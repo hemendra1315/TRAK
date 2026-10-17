@@ -68,13 +68,13 @@ Tests 4 and 5 use the emulator's real keyboard. If the keyboard never appears, t
 
 ## 4. Automated results
 
-Final CI run [39040956760](https://github.com/hemendra1315/TRAK/actions/runs/39040956760) on commit
-`742ea5d`. All four jobs passed.
+Latest code CI run [39041646608](https://github.com/hemendra1315/TRAK/actions/runs/39041646608) on commit
+`dacc9c3`, with the Supabase CLI pinned to 2.121.0. All four jobs passed.
 
-| Check | Baseline (`6e8feb2`) | This branch (`742ea5d`) |
+| Check | Baseline (`6e8feb2`) | This branch (`dacc9c3`) |
 |---|---|---|
 | `assembleDebug` (debug APK) | pass | pass |
-| Unit tests (`test`) | 69 run, 0 failed, 1 skipped | **74 run, 0 failed, 1 skipped** (+3 ProfileRepositoryTest, +2 SyncNoticeTest). The skip is the integration test, which runs in the database job |
+| Unit tests (`test`) | 69 run, 0 failed, 1 skipped | **76 run, 0 failed, 1 skipped** (+3 ProfileRepositoryTest, +2 SyncNoticeTest, +2 CleartextPolicyTest). The skip is the integration test, which runs in the database job |
 | Android lint (`lint`) | pass | pass |
 | Emulator tests (API 35, `connectedDebugAndroidTest`) | 11 run, 0 failed | **16 run, 0 failed, 0 skipped** (+5 KeyboardUiTest). 0 skipped means the real-keyboard tests 4 and 5 actually ran |
 | Kotlin integration test vs local Supabase | 1/1 | **1/1** |
@@ -91,7 +91,7 @@ How it got there, for the record:
     the 320 dp-wide emulator and the test tapped a hidden chip. The test now follows the real flow.
   - **Database job:** GitHub API rate limit while downloading the Supabase CLI. No test ran. It
     passed on the next run with no change.
-- The second run is the one in the table above.
+- The second run (`742ea5d`) passed all jobs. A later docs-only commit hit the same CLI rate limit, so the CLI was pinned. The pinned run on `dacc9c3` is the one in the table above.
 
 Not run in this workspace: Gradle cannot reach Maven or Google here, so every build and test ran in
 GitHub Actions on the `phase1-closeout` branch.
